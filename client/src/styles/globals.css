@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply bg-base-100 text-base-content;
+  }
+}
+
+@layer utilities {
+  .signal-text {
+    background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 55%, #FFAD3B 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .signal-border {
+    border-image: linear-gradient(135deg, #FF6B6B, #FF8E53, #FFAD3B) 1;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-signal/10;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-base-200;
+}
+::-webkit-scrollbar-thumb {
+  background: #FF8E5366;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FF8E53aa;
+}
