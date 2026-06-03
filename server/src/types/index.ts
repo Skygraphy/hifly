@@ -1,7 +1,11 @@
 export type ProcessingStatus = 'pending' | 'processing' | 'ready' | 'error';
 
+// Internal DB status — 'uploaded' means DNG is in S3, worker can pick it up
+export type DbProcessingStatus = ProcessingStatus | 'uploaded';
+
 export interface ImageSummary {
-  hash: string;
+  id: string;        // full filename without extension (primary key)
+  hash: string;      // 4-char display/reference code
   address: string;
   tags: string[];
   status: ProcessingStatus;
@@ -22,6 +26,7 @@ export interface ImageDetail extends ImageSummary {
 }
 
 export interface ImageRow {
+  id: string;
   hash: string;
   original_filename: string;
   address: string;
@@ -32,7 +37,7 @@ export interface ImageRow {
   checksum: string;
   tags: string[];
   upload_timestamp: string;
-  processing_status: ProcessingStatus;
+  processing_status: DbProcessingStatus;
   processing_error: string | null;
   processed_at: string | null;
 }
@@ -45,9 +50,10 @@ export interface UploadInitiateFile {
 }
 
 export interface UploadInitiateResult {
+  id: string;
   hash: string;
   isDuplicate: boolean;
-  duplicateHash?: string;
+  duplicateId?: string;
   presignedUrl?: string;
   s3Key?: string;
 }

@@ -14,9 +14,17 @@ export function DropZone({ disabled }: DropZoneProps) {
   const [dragging, setDragging] = useState(false);
   const [invalidFiles, setInvalidFiles] = useState<string[]>([]);
   const addFiles = useUploadStore((s) => s.addFiles);
+  const clearAll = useUploadStore((s) => s.clearAll);
   const existing = useUploadStore((s) => s.files);
 
   const processFiles = useCallback((rawFiles: File[]) => {
+    // If all previous uploads are settled, start fresh automatically
+    const currentFiles = useUploadStore.getState().files;
+    const allSettled = currentFiles.length > 0 &&
+      currentFiles.every((f) => ['done', 'duplicate', 'error'].includes(f.status));
+    if (allSettled) clearAll();
+
+    const activeFiles = useUploadStore.getState().files;
     const invalid: string[] = [];
     const valid: UploadFile[] = [];
 
@@ -31,8 +39,10 @@ export function DropZone({ disabled }: DropZoneProps) {
         invalid.push(file.name);
         continue;
       }
-      // Prevent adding same file (by name) twice
-      if (existing.some((e) => e.file.name === file.name)) continue;
+      // Prevent adding same filename twice — check store AND current batch
+      // (Server-side checksum check catches true DB duplicates separately)
+      if (activeFiles.some((e) => e.file.name === file.name)) continue;
+      if (valid.some((v) => v.file.name === file.name)) continue;
 
       valid.push({
         id: randomId(),
@@ -48,7 +58,7 @@ export function DropZone({ disabled }: DropZoneProps) {
     if (valid.length > 0) addFiles(valid);
     setInvalidFiles(invalid);
     setTimeout(() => setInvalidFiles([]), 5000);
-  }, [addFiles, existing]);
+  }, [addFiles, clearAll]);
 
   function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();

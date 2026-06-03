@@ -9,17 +9,17 @@ import type { ImageSummary } from '../api/images';
 
 export function GalleryPage() {
   const [selectedImage, setSelectedImage] = useState<ImageSummary | null>(null);
-  const { filterTags, filterAddress, selectedHashes, selectAll } = useGalleryStore();
+  const { filterTags, filterAddress, selectedIds, selectAll } = useGalleryStore();
   const { images, total } = useGallery();
 
   const hasFilters = filterTags.length > 0 || filterAddress;
-  const allSelected = images.length > 0 && images.every((img) => selectedHashes.has(img.hash));
+  const allSelected = images.length > 0 && images.every((img) => selectedIds.has(img.id));
 
   function handleSelectAll() {
     if (allSelected) {
       useGalleryStore.getState().clearSelection();
     } else {
-      selectAll(images.map((img) => img.hash));
+      selectAll(images.map((img) => img.id));
     }
   }
 

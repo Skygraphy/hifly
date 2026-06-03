@@ -4,18 +4,18 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useGallery } from '../../hooks/useGallery';
 
 export function BulkActionBar() {
-  const { selectedHashes, clearSelection } = useGalleryStore();
+  const { selectedIds, clearSelection } = useGalleryStore();
   const { removeBulk } = useGallery();
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const count = selectedHashes.size;
+  const count = selectedIds.size;
   if (count === 0) return null;
 
   async function handleDelete() {
     setLoading(true);
     try {
-      await removeBulk(Array.from(selectedHashes));
+      await removeBulk(Array.from(selectedIds));
       clearSelection();
     } finally {
       setLoading(false);

@@ -10,8 +10,8 @@ interface GalleryGridProps {
 
 export function GalleryGrid({ onImageClick }: GalleryGridProps) {
   const { images, total, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGallery();
-  const selectedHashes = useGalleryStore((s) => s.selectedHashes);
-  const anySelected = selectedHashes.size > 0;
+  const selectedIds = useGalleryStore((s) => s.selectedIds);
+  const anySelected = selectedIds.size > 0;
 
   if (isLoading) {
     return (
@@ -44,7 +44,7 @@ export function GalleryGrid({ onImageClick }: GalleryGridProps) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {images.map((image) => (
           <ImageCard
-            key={image.hash}
+            key={image.id}
             image={image}
             onClick={() => onImageClick(image)}
             anySelected={anySelected}

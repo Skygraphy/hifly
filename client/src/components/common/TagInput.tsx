@@ -52,7 +52,11 @@ export function TagInput({ tags, onChange, placeholder = 'Tag hinzufügen…', s
           onChange={(e) => { setInput(e.target.value); setShowSuggestions(true); }}
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          onBlur={() => {
+            // Auto-confirm any typed tag when focus leaves (e.g. user clicks Upload)
+            if (input.trim()) addTag(input);
+            setTimeout(() => setShowSuggestions(false), 150);
+          }}
           placeholder={tags.length === 0 ? placeholder : ''}
           className="flex-1 min-w-[120px] bg-transparent outline-none text-sm text-base-content placeholder-base-content/30"
         />

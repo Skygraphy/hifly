@@ -57,7 +57,7 @@ export function FileQueueItem({ file }: FileQueueItemProps) {
           {/* Duplicate warning */}
           {isDuplicate && (
             <p className="mt-2 text-xs text-warning">
-              Bereits vorhanden als #{file.duplicateHash} — wird übersprungen
+              Bereits vorhanden{file.duplicateId ? ` (${file.duplicateId})` : ''} — wird übersprungen
             </p>
           )}
 

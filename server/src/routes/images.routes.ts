@@ -6,9 +6,9 @@ const router = Router();
 
 router.use(requireAuth);
 router.get('/', list);
-router.get('/:hash', getOne);
-router.patch('/:hash/tags', updateTags);
+router.get('/:id', getOne);
+router.patch('/:id/tags', updateTags);
 router.delete('/', deleteBulk);
-router.delete('/:hash', deleteOne);
+router.delete('/:id', deleteOne);
 
 export default router;

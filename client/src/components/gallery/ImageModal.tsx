@@ -23,8 +23,8 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
   const queryClient = useQueryClient();
 
   const { data: detail, isLoading } = useQuery({
-    queryKey: ['image', image.hash],
-    queryFn: () => fetchImage(image.hash),
+    queryKey: ['image', image.id],
+    queryFn: () => fetchImage(image.id),
     refetchInterval: image.status !== 'ready' ? 3000 : false,
   });
 
@@ -46,7 +46,7 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
     if (!detail) return;
     setSavingTags(true);
     try {
-      await updateImageTags(detail.hash, localTags);
+      await updateImageTags(detail.id, localTags);
       queryClient.invalidateQueries({ queryKey: ['images'] });
       queryClient.invalidateQueries({ queryKey: ['tags'] });
       setEditingTags(false);
@@ -58,7 +58,7 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
   async function handleDelete() {
     setDeleting(true);
     try {
-      await deleteImage(image.hash);
+      await deleteImage(image.id);
       queryClient.invalidateQueries({ queryKey: ['images'] });
       onDeleted();
       onClose();
@@ -202,6 +202,7 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
         <ConfirmDialog
           title="Bild löschen?"
           message={`#${image.hash} — ${image.address} wird unwiderruflich gelöscht (DNG + alle JPGs).`}
+
           confirmLabel="Endgültig löschen"
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)}

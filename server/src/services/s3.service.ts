@@ -31,31 +31,30 @@ export async function generateDownloadUrl(s3Key: string, downloadFilename?: stri
   return getSignedUrl(s3Client, cmd, { expiresIn: DOWNLOAD_TTL });
 }
 
-export async function generateAllUrls(hash: string, originalFilename: string): Promise<{
+export async function generateAllUrls(s3KeyPrefix: string, originalFilename: string): Promise<{
   thumb: string;
   small: string;
   medium: string;
   large: string;
   original: string;
 }> {
-  const prefix = `images/${hash}`;
   const [thumb, small, medium, large, original] = await Promise.all([
-    generateDownloadUrl(`${prefix}/thumb.jpg`),
-    generateDownloadUrl(`${prefix}/small.jpg`),
-    generateDownloadUrl(`${prefix}/medium.jpg`),
-    generateDownloadUrl(`${prefix}/large.jpg`),
-    generateDownloadUrl(`${prefix}/original.dng`, originalFilename),
+    generateDownloadUrl(`${s3KeyPrefix}thumb.jpg`),
+    generateDownloadUrl(`${s3KeyPrefix}small.jpg`),
+    generateDownloadUrl(`${s3KeyPrefix}medium.jpg`),
+    generateDownloadUrl(`${s3KeyPrefix}large.jpg`),
+    generateDownloadUrl(`${s3KeyPrefix}original.dng`, originalFilename),
   ]);
   return { thumb, small, medium, large, original };
 }
 
-export async function deleteImage(hash: string): Promise<void> {
+export async function deleteImage(s3KeyPrefix: string): Promise<void> {
   const keys = [
-    `images/${hash}/original.dng`,
-    `images/${hash}/thumb.jpg`,
-    `images/${hash}/small.jpg`,
-    `images/${hash}/medium.jpg`,
-    `images/${hash}/large.jpg`,
+    `${s3KeyPrefix}original.dng`,
+    `${s3KeyPrefix}thumb.jpg`,
+    `${s3KeyPrefix}small.jpg`,
+    `${s3KeyPrefix}medium.jpg`,
+    `${s3KeyPrefix}large.jpg`,
   ];
 
   await s3Client.send(new DeleteObjectsCommand({
@@ -67,15 +66,15 @@ export async function deleteImage(hash: string): Promise<void> {
   }));
 }
 
-export async function deleteImages(hashes: string[]): Promise<void> {
-  if (hashes.length === 0) return;
+export async function deleteImages(prefixes: string[]): Promise<void> {
+  if (prefixes.length === 0) return;
 
-  const keys = hashes.flatMap((hash) => [
-    `images/${hash}/original.dng`,
-    `images/${hash}/thumb.jpg`,
-    `images/${hash}/small.jpg`,
-    `images/${hash}/medium.jpg`,
-    `images/${hash}/large.jpg`,
+  const keys = prefixes.flatMap((prefix) => [
+    `${prefix}original.dng`,
+    `${prefix}thumb.jpg`,
+    `${prefix}small.jpg`,
+    `${prefix}medium.jpg`,
+    `${prefix}large.jpg`,
   ]);
 
   // DeleteObjects supports max 1000 keys per request

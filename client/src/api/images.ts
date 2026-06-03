@@ -3,7 +3,8 @@ import { apiClient } from './client';
 export type ProcessingStatus = 'pending' | 'processing' | 'ready' | 'error';
 
 export interface ImageSummary {
-  hash: string;
+  id: string;        // full filename without extension (primary key)
+  hash: string;      // 4-char display/reference code
   address: string;
   tags: string[];
   status: ProcessingStatus;
@@ -43,9 +44,10 @@ export interface UploadInitiateFile {
 }
 
 export interface UploadInitiateResult {
+  id: string;
   hash: string;
   isDuplicate: boolean;
-  duplicateHash?: string;
+  duplicateId?: string;
   presignedUrl?: string;
   s3Key?: string;
 }
@@ -68,22 +70,25 @@ export async function fetchImages(params: {
   return data;
 }
 
-export async function fetchImage(hash: string): Promise<ImageDetail> {
-  const { data } = await apiClient.get(`/images/${hash}`);
+export async function fetchImage(id: string): Promise<ImageDetail> {
+  const { data } = await apiClient.get(`/images/${encodeURIComponent(id)}`, {
+    params: { _t: Date.now() },
+    headers: { 'Cache-Control': 'no-cache' },
+  });
   return data.data;
 }
 
-export async function updateImageTags(hash: string, tags: string[]): Promise<string[]> {
-  const { data } = await apiClient.patch(`/images/${hash}/tags`, { tags });
+export async function updateImageTags(id: string, tags: string[]): Promise<string[]> {
+  const { data } = await apiClient.patch(`/images/${encodeURIComponent(id)}/tags`, { tags });
   return data.data.tags;
 }
 
-export async function deleteImage(hash: string): Promise<void> {
-  await apiClient.delete(`/images/${hash}`);
+export async function deleteImage(id: string): Promise<void> {
+  await apiClient.delete(`/images/${encodeURIComponent(id)}`);
 }
 
-export async function deleteImages(hashes: string[]): Promise<void> {
-  await apiClient.delete('/images', { data: { hashes } });
+export async function deleteImages(ids: string[]): Promise<void> {
+  await apiClient.delete('/images', { data: { ids } });
 }
 
 export async function initiateUpload(files: UploadInitiateFile[]): Promise<UploadInitiateResult[]> {
@@ -91,8 +96,8 @@ export async function initiateUpload(files: UploadInitiateFile[]): Promise<Uploa
   return data.data;
 }
 
-export async function confirmUpload(hash: string, s3Key: string): Promise<void> {
-  await apiClient.post('/upload/confirm', { hash, s3Key });
+export async function confirmUpload(id: string, s3Key: string): Promise<void> {
+  await apiClient.post('/upload/confirm', { id, s3Key });
 }
 
 export function uploadToS3(

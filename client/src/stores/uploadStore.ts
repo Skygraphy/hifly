@@ -11,14 +11,14 @@ export type UploadFileStatus =
   | 'error';
 
 export interface UploadFile {
-  id: string; // local uuid
+  id: string;              // local uuid for list management
   file: File;
   parsed: ParsedFilename;
   checksum: string | null;
   individualTags: string[];
   status: UploadFileStatus;
-  progress: number; // 0–100
-  duplicateHash?: string;
+  progress: number;
+  duplicateId?: string;    // id of the existing duplicate image
   error?: string;
 }
 

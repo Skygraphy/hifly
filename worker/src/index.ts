@@ -1,80 +1,59 @@
-import {
-  SQSClient,
-  ReceiveMessageCommand,
-  DeleteMessageCommand,
-  Message,
-} from '@aws-sdk/client-sqs';
 import 'dotenv/config';
+import { claimNextJob } from './db';
 import { processImage } from './processor';
 
-const sqs = new SQSClient({ region: process.env.AWS_REGION ?? 'eu-central-1' });
-const QUEUE_URL = process.env.SQS_QUEUE_URL!;
+const POLL_INTERVAL_MS = 5000; // check every 5 seconds when idle
 const CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY ?? '2', 10);
-
-interface ProcessingJob {
-  hash: string;
-  s3KeyPrefix: string;
-}
 
 let activeJobs = 0;
 
-async function handleMessage(msg: Message): Promise<void> {
-  if (!msg.Body || !msg.ReceiptHandle) return;
-
-  let job: ProcessingJob;
-  try {
-    job = JSON.parse(msg.Body) as ProcessingJob;
-  } catch {
-    console.error('Invalid SQS message body:', msg.Body);
-    return;
-  }
-
-  try {
-    await processImage(job.hash, job.s3KeyPrefix);
-  } finally {
-    // Always delete the message — even on failure (moved to error state in DB)
-    await sqs.send(new DeleteMessageCommand({
-      QueueUrl: QUEUE_URL,
-      ReceiptHandle: msg.ReceiptHandle,
-    }));
-  }
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function poll(): Promise<void> {
+async function poll() {
+  console.log(`HiFly Worker started (concurrency: ${CONCURRENCY})`);
+  console.log('Polling Supabase for pending images…\n');
+
   while (true) {
     if (activeJobs >= CONCURRENCY) {
-      await new Promise((r) => setTimeout(r, 1000));
+      await sleep(1000);
       continue;
     }
 
-    const { Messages } = await sqs.send(new ReceiveMessageCommand({
-      QueueUrl: QUEUE_URL,
-      MaxNumberOfMessages: Math.min(CONCURRENCY - activeJobs, 10),
-      WaitTimeSeconds: 20, // long polling
-      VisibilityTimeout: 600, // 10 min — enough for a large DNG
-    }));
-
-    if (!Messages || Messages.length === 0) continue;
-
-    for (const msg of Messages) {
-      activeJobs++;
-      handleMessage(msg).finally(() => { activeJobs--; });
+    let job;
+    try {
+      job = await claimNextJob();
+    } catch (err) {
+      console.error('DB polling error:', err);
+      await sleep(POLL_INTERVAL_MS);
+      continue;
     }
+
+    if (!job) {
+      // No work — wait before polling again
+      await sleep(POLL_INTERVAL_MS);
+      continue;
+    }
+
+    const jobId = job.id;
+    const jobPrefix = job.s3_key_prefix;
+    activeJobs++;
+    processImage(jobId, jobPrefix)
+      .catch((err) => console.error(`[${jobId}] Unhandled error:`, err))
+      .finally(() => { activeJobs--; });
   }
 }
 
-console.log(`HiFly Worker starting (concurrency: ${CONCURRENCY})`);
-console.log(`Queue: ${QUEUE_URL}`);
-
 poll().catch((err) => {
-  console.error('Fatal polling error:', err);
+  console.error('Fatal error:', err);
   process.exit(1);
 });
 
-// Graceful shutdown
+// Graceful shutdown: wait for active jobs to finish
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Waiting for active jobs to finish…');
-  const wait = setInterval(() => {
-    if (activeJobs === 0) { clearInterval(wait); process.exit(0); }
+  console.log('SIGTERM — waiting for active jobs to complete…');
+  const timer = setInterval(() => {
+    if (activeJobs === 0) { clearInterval(timer); process.exit(0); }
   }, 1000);
 });

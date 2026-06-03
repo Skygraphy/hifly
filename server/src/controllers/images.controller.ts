@@ -41,7 +41,7 @@ export async function list(req: Request, res: Response, next: NextFunction) {
 
 export async function getOne(req: Request, res: Response, next: NextFunction) {
   try {
-    const image = await imagesService.getImage(req.params.hash.toUpperCase());
+    const image = await imagesService.getImage(req.params.id);
     if (!image) {
       res.status(404).json({ error: 'Image not found' });
       return;
@@ -59,8 +59,8 @@ const tagsSchema = z.object({
 export async function updateTags(req: Request, res: Response, next: NextFunction) {
   try {
     const { tags } = tagsSchema.parse(req.body);
-    const updated = await imagesService.updateTags(req.params.hash.toUpperCase(), tags);
-    res.json({ data: { hash: req.params.hash.toUpperCase(), tags: updated } });
+    const updated = await imagesService.updateTags(req.params.id, tags);
+    res.json({ data: { id: req.params.id, tags: updated } });
   } catch (err) {
     next(err);
   }
@@ -68,9 +68,10 @@ export async function updateTags(req: Request, res: Response, next: NextFunction
 
 export async function deleteOne(req: Request, res: Response, next: NextFunction) {
   try {
-    const hash = req.params.hash.toUpperCase();
-    await s3Service.deleteImage(hash);
-    await imagesService.deleteImageRecord(hash);
+    const id = req.params.id;
+    const prefix = await imagesService.getS3Prefix(id);
+    if (prefix) await s3Service.deleteImage(prefix);
+    await imagesService.deleteImageRecord(id);
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -78,18 +79,18 @@ export async function deleteOne(req: Request, res: Response, next: NextFunction)
 }
 
 const bulkDeleteSchema = z.object({
-  hashes: z.array(z.string().length(4)).min(1).max(500),
+  ids: z.array(z.string().min(1)).min(1).max(500),
 });
 
 export async function deleteBulk(req: Request, res: Response, next: NextFunction) {
   try {
-    const { hashes } = bulkDeleteSchema.parse(req.body);
-    const upperHashes = hashes.map((h) => h.toUpperCase());
+    const { ids } = bulkDeleteSchema.parse(req.body);
+    const prefixes = await imagesService.getS3Prefixes(ids);
 
-    await s3Service.deleteImages(upperHashes);
-    await imagesService.deleteImageRecords(upperHashes);
+    await s3Service.deleteImages(prefixes);
+    await imagesService.deleteImageRecords(ids);
 
-    res.json({ data: { deleted: upperHashes } });
+    res.json({ data: { deleted: ids } });
   } catch (err) {
     next(err);
   }

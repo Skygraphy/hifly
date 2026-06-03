@@ -1,6 +1,6 @@
 import { spawnSync } from 'child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { tmpdir } from 'os';
 import sharp from 'sharp';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -10,6 +10,11 @@ import 'dotenv/config';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'eu-central-1' });
 const BUCKET = process.env.S3_BUCKET!;
+
+// On Windows use the bundled dcraw.exe in worker/bin/, on Linux use system dcraw
+const DCRAW = process.platform === 'win32'
+  ? join(dirname(dirname(__filename)), 'bin', 'dcraw.exe')
+  : 'dcraw';
 
 const JPG_VARIANTS = [
   { name: 'large',  width: 3000, height: undefined, fit: 'inside'  as const },
@@ -29,13 +34,8 @@ async function downloadDNG(s3Key: string): Promise<Buffer> {
 }
 
 function convertDNGtoTIFF(dngPath: string): Buffer {
-  // dcraw flags:
-  //   -T  output TIFF
-  //   -w  use camera white balance
-  //   -b 2.0  brightness (slight boost for aerial photos)
-  //   -c  write to stdout
-  const result = spawnSync('dcraw', ['-T', '-w', '-b', '2.0', '-c', dngPath], {
-    maxBuffer: 600 * 1024 * 1024, // 600 MB — uncompressed TIFF from 50MP can be ~300MB
+  const result = spawnSync(DCRAW, ['-T', '-w', '-b', '2.0', '-c', dngPath], {
+    maxBuffer: 600 * 1024 * 1024,
     encoding: 'buffer',
   });
 
@@ -49,7 +49,7 @@ function convertDNGtoTIFF(dngPath: string): Buffer {
   return result.stdout as Buffer;
 }
 
-async function generateJpgs(tiffBuffer: Buffer, hash: string, prefix: string): Promise<void> {
+async function generateJpgs(tiffBuffer: Buffer, id: string, prefix: string): Promise<void> {
   await Promise.all(
     JPG_VARIANTS.map(async ({ name, width, height, fit }) => {
       const jpgBuffer = await sharp(tiffBuffer)
@@ -58,37 +58,37 @@ async function generateJpgs(tiffBuffer: Buffer, hash: string, prefix: string): P
         .toBuffer();
 
       await uploadJpg(`${prefix}${name}.jpg`, jpgBuffer);
-      console.log(`  ✓ ${name}.jpg (${(jpgBuffer.length / 1024).toFixed(0)} KB) → ${hash}`);
+      console.log(`  ✓ ${name}.jpg (${(jpgBuffer.length / 1024).toFixed(0)} KB) → ${id}`);
     })
   );
 }
 
-export async function processImage(hash: string, s3KeyPrefix: string): Promise<void> {
+export async function processImage(id: string, s3KeyPrefix: string): Promise<void> {
   const dngKey = `${s3KeyPrefix}original.dng`;
-  const tmpDir = mkdtempSync(join(tmpdir(), `hifly-${hash}-`));
+  const tmpDir = mkdtempSync(join(tmpdir(), `hifly-${id.slice(-8)}-`));
   const dngPath = join(tmpDir, 'original.dng');
 
   try {
-    await setStatus(hash, 'processing');
-    console.log(`[${hash}] Downloading DNG from S3…`);
+    await setStatus(id, 'processing');
+    console.log(`[${id}] Downloading DNG from S3…`);
 
     const dngBuffer = await downloadDNG(dngKey);
     writeFileSync(dngPath, dngBuffer);
-    console.log(`[${hash}] DNG downloaded (${(dngBuffer.length / 1024 / 1024).toFixed(1)} MB)`);
+    console.log(`[${id}] DNG downloaded (${(dngBuffer.length / 1024 / 1024).toFixed(1)} MB)`);
 
-    console.log(`[${hash}] Converting DNG → TIFF via dcraw…`);
+    console.log(`[${id}] Converting DNG → TIFF via dcraw…`);
     const tiffBuffer = convertDNGtoTIFF(dngPath);
-    console.log(`[${hash}] TIFF generated (${(tiffBuffer.length / 1024 / 1024).toFixed(1)} MB)`);
+    console.log(`[${id}] TIFF generated (${(tiffBuffer.length / 1024 / 1024).toFixed(1)} MB)`);
 
-    console.log(`[${hash}] Generating JPG variants…`);
-    await generateJpgs(tiffBuffer, hash, s3KeyPrefix);
+    console.log(`[${id}] Generating JPG variants…`);
+    await generateJpgs(tiffBuffer, id, s3KeyPrefix);
 
-    await setStatus(hash, 'ready');
-    console.log(`[${hash}] Processing complete.`);
+    await setStatus(id, 'ready');
+    console.log(`[${id}] Processing complete.`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[${hash}] Processing failed:`, msg);
-    await setStatus(hash, 'error', msg).catch(() => {});
+    console.error(`[${id}] Processing failed:`, msg);
+    await setStatus(id, 'error', msg).catch(() => {});
     throw err;
   } finally {
     try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}

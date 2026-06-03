@@ -21,13 +21,13 @@ export function useGallery() {
   const allImages: ImageSummary[] = query.data?.pages.flatMap((p) => p.data) ?? [];
   const total = query.data?.pages[0]?.meta.total ?? 0;
 
-  async function removeSingle(hash: string) {
-    await deleteImage(hash);
+  async function removeSingle(id: string) {
+    await deleteImage(id);
     queryClient.invalidateQueries({ queryKey });
   }
 
-  async function removeBulk(hashes: string[]) {
-    await deleteImages(hashes);
+  async function removeBulk(ids: string[]) {
+    await deleteImages(ids);
     queryClient.invalidateQueries({ queryKey });
   }
 

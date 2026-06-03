@@ -11,14 +11,14 @@ interface ImageCardProps {
 }
 
 export function ImageCard({ image, onClick, anySelected }: ImageCardProps) {
-  const { selectedHashes, toggleSelection } = useGalleryStore();
+  const { selectedIds, toggleSelection } = useGalleryStore();
   const [imgError, setImgError] = useState(false);
-  const isSelected = selectedHashes.has(image.hash);
+  const isSelected = selectedIds.has(image.id);
   const showCheckbox = anySelected || isSelected;
 
   function handleCheckboxClick(e: React.MouseEvent) {
     e.stopPropagation();
-    toggleSelection(image.hash);
+    toggleSelection(image.id);
   }
 
   return (

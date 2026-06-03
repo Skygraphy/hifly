@@ -4,16 +4,16 @@ import { sha256File } from '../lib/checksum';
 import { initiateUpload, confirmUpload, uploadToS3, fetchImage } from '../api/images';
 
 const POLL_INTERVAL = 3000;
-const POLL_MAX = 100; // 5 minutes
+const POLL_MAX = 100;
 
 export function useUpload() {
   const { files, batchTags, updateFile } = useUploadStore();
 
   const startUpload = useCallback(async () => {
-    // Step 1: compute checksums for all queued files
     const queuedFiles = files.filter((f) => f.status === 'queued');
     if (queuedFiles.length === 0) return;
 
+    // Step 1: compute checksums
     await Promise.all(
       queuedFiles.map(async (f) => {
         updateFile(f.id, { status: 'hashing' });
@@ -33,31 +33,34 @@ export function useUpload() {
     if (withChecksum.length === 0) return;
 
     // Step 2: initiate upload batch
+    // Read batchTags fresh from store to avoid stale closure
+    const currentBatchTags = useUploadStore.getState().batchTags;
     const initiatePayload = withChecksum.map((f) => ({
       filename: f.file.name,
       fileSize: f.file.size,
       checksum: f.checksum!,
-      tags: getMergedTags(f, batchTags),
+      tags: getMergedTags(f, currentBatchTags),
     }));
+    console.log('[upload] tags per file:', initiatePayload.map(p => `${p.filename}: [${p.tags.join(',')}]`));
 
     let results;
     try {
       results = await initiateUpload(initiatePayload);
-    } catch (err) {
+    } catch {
       withChecksum.forEach((f) =>
         updateFile(f.id, { status: 'error', error: 'Upload-Initialisierung fehlgeschlagen' })
       );
       return;
     }
 
-    // Step 3: upload each non-duplicate file to S3
+    // Step 3: upload each file to S3
     await Promise.all(
       withChecksum.map(async (f, i) => {
         const result = results[i];
         if (!result) return;
 
         if (result.isDuplicate) {
-          updateFile(f.id, { status: 'duplicate', duplicateHash: result.duplicateHash });
+          updateFile(f.id, { status: 'duplicate', duplicateId: result.duplicateId });
           return;
         }
 
@@ -71,11 +74,9 @@ export function useUpload() {
           await uploadToS3(result.presignedUrl, f.file, (pct) =>
             updateFile(f.id, { progress: pct })
           );
-          await confirmUpload(result.hash, result.s3Key);
+          await confirmUpload(result.id, result.s3Key);
           updateFile(f.id, { status: 'processing', progress: 100 });
-
-          // Step 4: poll until processing_status === 'ready'
-          pollUntilReady(result.hash, f.id, updateFile);
+          pollUntilReady(result.id, f.id, updateFile);
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Upload fehlgeschlagen';
           updateFile(f.id, { status: 'error', error: msg });
@@ -88,14 +89,14 @@ export function useUpload() {
 }
 
 async function pollUntilReady(
-  hash: string,
+  imageId: string,
   fileId: string,
   updateFile: (id: string, patch: object) => void
 ) {
   for (let i = 0; i < POLL_MAX; i++) {
     await new Promise((r) => setTimeout(r, POLL_INTERVAL));
     try {
-      const image = await fetchImage(hash);
+      const image = await fetchImage(imageId);
       if (image.status === 'ready') {
         updateFile(fileId, { status: 'done' });
         return;
@@ -105,7 +106,7 @@ async function pollUntilReady(
         return;
       }
     } catch {
-      // network hiccup — keep polling
+      // keep polling on network hiccup
     }
   }
   updateFile(fileId, { status: 'error', error: 'Timeout: Bildverarbeitung dauert zu lange' });
