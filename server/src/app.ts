@@ -8,6 +8,9 @@ import authRoutes from './routes/auth.routes';
 import uploadRoutes from './routes/upload.routes';
 import imagesRoutes from './routes/images.routes';
 import tagsRoutes from './routes/tags.routes';
+import usersRoutes from './routes/users.routes';
+import regionsRoutes from './routes/regions.routes';
+import settingsRoutes from './routes/settings.routes';
 
 export function createApp() {
   const app = express();
@@ -24,6 +27,9 @@ export function createApp() {
   app.use('/api/upload', uploadRoutes);
   app.use('/api/images', imagesRoutes);
   app.use('/api/tags', tagsRoutes);
+  app.use('/api/users', usersRoutes);
+  app.use('/api/regions', regionsRoutes);
+  app.use('/api/settings', settingsRoutes);
 
   app.use(errorHandler);
 

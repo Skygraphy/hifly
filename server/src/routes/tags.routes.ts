@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.middleware';
 import { list } from '../controllers/tags.controller';
 
 const router = Router();
 
-router.use(requireAuth);
+// Public — tags are visible to everyone (needed for public gallery filter)
 router.get('/', list);
 
 export default router;

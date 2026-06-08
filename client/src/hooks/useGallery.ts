@@ -5,15 +5,21 @@ import { fetchImages, deleteImage, deleteImages, type ImageSummary } from '../ap
 const LIMIT = 50;
 
 export function useGallery() {
-  const { filterTags, filterAddress } = useGalleryStore();
+  const { filterTags, filterAddress, filterRegionId } = useGalleryStore();
   const queryClient = useQueryClient();
 
-  const queryKey = ['images', { filterTags, filterAddress }];
+  const queryKey = ['images', { filterTags, filterAddress, filterRegionId }];
 
   const query = useInfiniteQuery({
     queryKey,
     queryFn: ({ pageParam = 1 }) =>
-      fetchImages({ tags: filterTags, address: filterAddress, page: pageParam as number, limit: LIMIT }),
+      fetchImages({
+        tags: filterTags,
+        address: filterAddress,
+        regionId: filterRegionId ?? undefined,
+        page: pageParam as number,
+        limit: LIMIT,
+      }),
     getNextPageParam: (last) => (last.meta.hasMore ? last.meta.page + 1 : undefined),
     initialPageParam: 1,
   });

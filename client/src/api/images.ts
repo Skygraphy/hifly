@@ -11,6 +11,9 @@ export interface ImageSummary {
   thumbUrl: string | null;
   uploadTimestamp: string;
   fileSizeBytes: number | null;
+  isOwner: boolean;
+  regionId: string | null;
+  regionPath: string[]; // e.g. ['Österreich', 'Niederösterreich', 'Klosterneuburg']
 }
 
 export interface ImageDetail extends ImageSummary {
@@ -56,6 +59,7 @@ export async function fetchImages(params: {
   tags?: string[];
   address?: string;
   status?: ProcessingStatus;
+  regionId?: string;
   page: number;
   limit: number;
 }): Promise<GalleryResponse> {
@@ -65,6 +69,7 @@ export async function fetchImages(params: {
   if (params.tags?.length) params.tags.forEach((t) => searchParams.append('tags[]', t));
   if (params.address) searchParams.set('address', params.address);
   if (params.status) searchParams.set('status', params.status);
+  if (params.regionId) searchParams.set('regionId', params.regionId);
 
   const { data } = await apiClient.get(`/images?${searchParams}`);
   return data;

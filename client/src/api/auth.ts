@@ -1,7 +1,9 @@
 import { apiClient } from './client';
+import type { UserRole } from '../stores/authStore';
 
 export interface AuthResponse {
   token: string;
+  role: UserRole;
   expiresAt: string;
 }
 

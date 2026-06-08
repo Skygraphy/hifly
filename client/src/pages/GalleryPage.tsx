@@ -27,7 +27,7 @@ export function GalleryPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold signal-text">Galerie</h1>
+          <h1 className="text-2xl font-bold signal-text">Bearbeiten</h1>
           {hasFilters && (
             <p className="text-xs text-base-content/40 mt-1">
               Gefiltert — {total.toLocaleString('de')} Ergebnis{total !== 1 ? 'se' : ''}

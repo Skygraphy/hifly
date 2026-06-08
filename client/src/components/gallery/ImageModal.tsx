@@ -4,8 +4,10 @@ import { TagInput } from '../common/TagInput';
 import { TagBadge } from '../common/TagBadge';
 import { StatusBadge } from '../common/StatusBadge';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { RegionTreePicker } from '../common/RegionTreePicker';
 import { fetchImage, updateImageTags, deleteImage } from '../../api/images';
 import { fetchTags } from '../../api/tags';
+import { fetchRegionTree, updateImageRegion, type RegionNode } from '../../api/regions';
 import type { ImageSummary } from '../../api/images';
 
 interface ImageModalProps {
@@ -18,6 +20,8 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
   const [editingTags, setEditingTags] = useState(false);
   const [localTags, setLocalTags] = useState<string[]>([]);
   const [savingTags, setSavingTags] = useState(false);
+  const [editingRegion, setEditingRegion] = useState(false);
+  const [savingRegion, setSavingRegion] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const queryClient = useQueryClient();
@@ -30,6 +34,25 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
 
   const { data: tagData } = useQuery({ queryKey: ['tags'], queryFn: fetchTags, staleTime: 60000 });
   const tagSuggestions = tagData?.map((t) => t.tag) ?? [];
+
+  const { data: regionTree = [] } = useQuery({
+    queryKey: ['regions'],
+    queryFn: fetchRegionTree,
+    staleTime: 300000,
+  });
+
+  async function saveRegion(node: RegionNode | null) {
+    if (!detail) return;
+    setSavingRegion(true);
+    try {
+      await updateImageRegion(detail.id, node?.id ?? null);
+      queryClient.invalidateQueries({ queryKey: ['image', detail.id] });
+      queryClient.invalidateQueries({ queryKey: ['images'] });
+      setEditingRegion(false);
+    } finally {
+      setSavingRegion(false);
+    }
+  }
 
   useEffect(() => {
     if (detail) setLocalTags(detail.tags);
@@ -139,16 +162,56 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
 
             {/* Sidebar */}
             <div className="lg:w-72 p-4 flex flex-col gap-4 overflow-y-auto border-t lg:border-t-0 lg:border-l border-base-content/8">
+              {/* Region */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold text-base-content/50 uppercase tracking-wider">Region</h3>
+                  {detail?.isOwner && !editingRegion && (
+                    <button onClick={() => setEditingRegion(true)} className="btn btn-ghost btn-xs text-primary">
+                      Zuweisen
+                    </button>
+                  )}
+                  {editingRegion && (
+                    <div className="flex gap-1">
+                      <button onClick={() => setEditingRegion(false)} className="btn btn-ghost btn-xs">Abbruch</button>
+                      {savingRegion && <span className="loading loading-spinner loading-xs text-primary" />}
+                    </div>
+                  )}
+                </div>
+                {editingRegion ? (
+                  <div className="max-h-48 overflow-y-auto border border-base-content/8 rounded-lg p-2 bg-base-300">
+                    <button
+                      onClick={() => saveRegion(null)}
+                      className="w-full text-left text-xs text-error/60 hover:text-error px-2 py-1 mb-1"
+                    >
+                      ✕ Region entfernen
+                    </button>
+                    <RegionTreePicker
+                      nodes={regionTree}
+                      selectedId={detail?.regionId ?? null}
+                      onSelect={(node) => saveRegion(node)}
+                    />
+                  </div>
+                ) : detail?.regionPath && detail.regionPath.length > 0 ? (
+                  <p className="text-xs text-base-content/60">
+                    {detail.regionPath.join(' › ')}
+                  </p>
+                ) : (
+                  <p className="text-xs text-base-content/30">Keine Region</p>
+                )}
+              </div>
+
               {/* Tags */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-semibold text-base-content/50 uppercase tracking-wider">Tags</h3>
-                  {!editingTags ? (
+                  {!editingTags && detail?.isOwner && (
                     <button onClick={() => { setEditingTags(true); setLocalTags(detail?.tags ?? []); }}
                       className="btn btn-ghost btn-xs text-primary">
                       Bearbeiten
                     </button>
-                  ) : (
+                  )}
+                  {editingTags && (
                     <div className="flex gap-1">
                       <button onClick={() => setEditingTags(false)} className="btn btn-ghost btn-xs">Abbruch</button>
                       <button onClick={saveTags} disabled={savingTags} className="btn btn-primary btn-xs">
@@ -182,17 +245,19 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
                 </div>
               )}
 
-              {/* Delete */}
-              <div className="mt-auto pt-3 border-t border-base-content/8">
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  disabled={deleting}
-                  className="btn btn-error btn-sm btn-outline w-full"
-                >
-                  {deleting ? <span className="loading loading-spinner loading-xs" /> : null}
-                  Bild löschen
-                </button>
-              </div>
+              {/* Delete — only for owner */}
+              {detail?.isOwner && (
+                <div className="mt-auto pt-3 border-t border-base-content/8">
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    disabled={deleting}
+                    className="btn btn-error btn-sm btn-outline w-full"
+                  >
+                    {deleting ? <span className="loading loading-spinner loading-xs" /> : null}
+                    Bild löschen
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

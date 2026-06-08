@@ -1,3 +1,4 @@
+export type UserRole = 'user' | 'admin' | 'super_admin';
 export type ProcessingStatus = 'pending' | 'processing' | 'ready' | 'error';
 
 // Internal DB status — 'uploaded' means DNG is in S3, worker can pick it up
@@ -12,6 +13,9 @@ export interface ImageSummary {
   thumbUrl: string | null;
   uploadTimestamp: string;
   fileSizeBytes: number | null;
+  isOwner: boolean;
+  regionId: string | null;
+  regionPath: string[];
 }
 
 export interface ImageDetail extends ImageSummary {
@@ -40,6 +44,9 @@ export interface ImageRow {
   processing_status: DbProcessingStatus;
   processing_error: string | null;
   processed_at: string | null;
+  uploaded_by: string | null;
+  region_id: string | null;
+  region_path: string[];
 }
 
 export interface UploadInitiateFile {
@@ -61,6 +68,7 @@ export interface UploadInitiateResult {
 export interface AuthPayload {
   userId: string;
   email: string;
+  role: UserRole;
 }
 
 declare global {

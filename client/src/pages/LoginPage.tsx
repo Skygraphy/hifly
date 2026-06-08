@@ -3,14 +3,15 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export function LoginPage() {
-  const { isAuthenticated, login, register } = useAuth();
+  const { isAuthenticated, isAdmin, login, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated) return <Navigate to="/gallery" replace />;
+  // Redirect based on role: admin → manage, user → public gallery
+  if (isAuthenticated) return <Navigate to={isAdmin ? '/admin/manage' : '/gallery'} replace />;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

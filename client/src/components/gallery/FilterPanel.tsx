@@ -2,15 +2,22 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useGalleryStore } from '../../stores/galleryStore';
 import { fetchTags } from '../../api/tags';
+import { fetchRegionTree, type RegionNode } from '../../api/regions';
 import { TagBadge } from '../common/TagBadge';
+import { RegionTreePicker } from '../common/RegionTreePicker';
 
 export function FilterPanel() {
-  const { filterTags, filterAddress, setFilterTags, setFilterAddress, clearSelection } = useGalleryStore();
+  const {
+    filterTags, filterAddress, filterRegionId, filterRegionPath,
+    setFilterTags, setFilterAddress, setFilterRegion, clearSelection,
+  } = useGalleryStore();
   const [addressInput, setAddressInput] = useState(filterAddress);
+
   const { data: tagData } = useQuery({ queryKey: ['tags'], queryFn: fetchTags, staleTime: 60000 });
+  const { data: regionTree = [] } = useQuery({ queryKey: ['regions'], queryFn: fetchRegionTree, staleTime: 300000 });
 
   const allTags = tagData ?? [];
-  const hasFilters = filterTags.length > 0 || filterAddress;
+  const hasFilters = filterTags.length > 0 || filterAddress || filterRegionId;
 
   function toggleTag(tag: string) {
     clearSelection();
@@ -27,15 +34,56 @@ export function FilterPanel() {
     setFilterAddress(addressInput.trim());
   }
 
+  function handleRegionSelect(node: RegionNode | null) {
+    clearSelection();
+    if (!node) {
+      setFilterRegion(null, []);
+    } else {
+      // Build breadcrumb path — the node name plus its ancestors from the tree
+      setFilterRegion(node.id, [...filterRegionPath.slice(0, -1), node.name]);
+    }
+  }
+
   function clearFilters() {
     setFilterTags([]);
     setFilterAddress('');
     setAddressInput('');
+    setFilterRegion(null, []);
     clearSelection();
   }
 
   return (
     <aside className="w-64 shrink-0 space-y-5">
+      {/* Region filter */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold text-base-content/50 uppercase tracking-wider">Region</h3>
+          {filterRegionId && (
+            <button
+              onClick={() => { setFilterRegion(null, []); clearSelection(); }}
+              className="text-xs text-error/60 hover:text-error"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {filterRegionId && filterRegionPath.length > 0 && (
+          <p className="text-xs text-primary mb-2 truncate">
+            {filterRegionPath.join(' › ')}
+          </p>
+        )}
+        <div className="max-h-48 overflow-y-auto">
+          <RegionTreePicker
+            nodes={regionTree}
+            selectedId={filterRegionId}
+            onSelect={(node) => {
+              clearSelection();
+              setFilterRegion(node?.id ?? null, node ? [node.name] : []);
+            }}
+          />
+        </div>
+      </div>
+
       {/* Address search */}
       <div>
         <h3 className="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-2">
@@ -71,24 +119,15 @@ export function FilterPanel() {
       <div>
         <h3 className="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-2">
           Tags
-          {filterTags.length > 0 && (
-            <span className="ml-1 text-primary">(AND-Filter)</span>
-          )}
+          {filterTags.length > 0 && <span className="ml-1 text-primary">(AND)</span>}
         </h3>
         {allTags.length === 0 ? (
           <p className="text-xs text-base-content/30">Keine Tags vorhanden</p>
         ) : (
-          <div className="flex flex-wrap gap-1.5 max-h-72 overflow-y-auto pr-1">
+          <div className="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto pr-1">
             {allTags.map(({ tag, count }) => (
-              <button
-                key={tag}
-                onClick={() => toggleTag(tag)}
-                className="flex items-center gap-1"
-              >
-                <TagBadge
-                  tag={`${tag} (${count})`}
-                  active={filterTags.includes(tag)}
-                />
+              <button key={tag} onClick={() => toggleTag(tag)} className="flex items-center gap-1">
+                <TagBadge tag={`${tag} (${count})`} active={filterTags.includes(tag)} />
               </button>
             ))}
           </div>

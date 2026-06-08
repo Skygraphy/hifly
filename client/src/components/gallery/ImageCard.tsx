@@ -14,7 +14,8 @@ export function ImageCard({ image, onClick, anySelected }: ImageCardProps) {
   const { selectedIds, toggleSelection } = useGalleryStore();
   const [imgError, setImgError] = useState(false);
   const isSelected = selectedIds.has(image.id);
-  const showCheckbox = anySelected || isSelected;
+  // Only show checkbox for images the user owns (can delete)
+  const showCheckbox = image.isOwner && (anySelected || isSelected);
 
   function handleCheckboxClick(e: React.MouseEvent) {
     e.stopPropagation();

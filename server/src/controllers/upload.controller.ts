@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { generateUploadUrl } from '../services/s3.service';
 import { findByChecksum } from '../services/duplicates.service';
 import { createImage, updateImageStatus } from '../services/images.service';
+import { getSetting } from '../services/settings.service';
 import type { UploadInitiateResult } from '../types';
 
 // Parses filename: Adalbert_Stifter_Gasse_2024_07_13_001_7EE7.DNG
@@ -61,6 +62,7 @@ export async function initiate(req: Request, res: Response, next: NextFunction) 
           fileSizeBytes: file.fileSize,
           checksum: file.checksum,
           tags: file.tags ?? [],
+          uploadedBy: req.user!.userId,
         });
 
         return { id, hash: parsed.hash, isDuplicate: false, presignedUrl, s3Key };
@@ -81,8 +83,10 @@ const confirmSchema = z.object({
 export async function confirm(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = confirmSchema.parse(req.body);
-    await updateImageStatus(id, 'uploaded');
-    res.json({ data: { id, status: 'queued' } });
+    // Only queue for processing if worker_auto_process is enabled
+    const autoProcess = await getSetting<boolean>('worker_auto_process');
+    await updateImageStatus(id, autoProcess !== false ? 'uploaded' : 'pending');
+    res.json({ data: { id, status: autoProcess !== false ? 'queued' : 'pending' } });
   } catch (err) {
     next(err);
   }

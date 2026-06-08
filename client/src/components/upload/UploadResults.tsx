@@ -31,7 +31,7 @@ export function UploadResults() {
         </div>
       </div>
       <div className="flex gap-3">
-        <Link to="/gallery" className="btn btn-primary btn-sm flex-1">Zur Galerie</Link>
+        <Link to="/admin/manage" className="btn btn-primary btn-sm flex-1">Zum Bearbeiten</Link>
         <button onClick={clearAll} className="btn btn-ghost btn-sm flex-1">Neue Uploads</button>
       </div>
     </div>
