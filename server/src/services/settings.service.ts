@@ -6,7 +6,7 @@ export interface AppSetting {
   value: unknown;
   label: string;
   description: string | null;
-  type: 'string' | 'boolean' | 'region';
+  type: 'string' | 'boolean' | 'region' | 'image_list';
   min_role: UserRole;
   updated_at: string;
 }

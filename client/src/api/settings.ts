@@ -5,7 +5,7 @@ export interface AppSetting {
   value: unknown;
   label: string;
   description: string | null;
-  type: 'string' | 'boolean' | 'region';
+  type: 'string' | 'boolean' | 'region' | 'image_list';
   min_role: 'user' | 'admin' | 'super_admin';
   updated_at: string;
 }

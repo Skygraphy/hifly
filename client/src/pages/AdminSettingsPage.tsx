@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSettings, updateSetting, type AppSetting } from '../api/settings';
 import { fetchRegionTree, type RegionNode } from '../api/regions';
 import { RegionTreePicker } from '../components/common/RegionTreePicker';
+import { HeroImagePickerModal } from '../components/layout/HeroImagePickerModal';
 import { useAuth } from '../hooks/useAuth';
 
 function findRegionById(nodes: RegionNode[], id: string): RegionNode | null {
@@ -37,6 +38,7 @@ function SettingRow({ setting, regionTree, canEdit }: SettingRowProps) {
   const queryClient = useQueryClient();
   const [localValue, setLocalValue] = useState(setting.value);
   const [saved, setSaved] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: (value: unknown) => updateSetting(setting.key, value),
@@ -79,7 +81,7 @@ function SettingRow({ setting, regionTree, canEdit }: SettingRowProps) {
       {/* Region picker — shown below the header row */}
       {setting.type === 'region' && (
         <div className="mt-3">
-          {localValue && localValue !== null && typeof localValue === 'string' && (
+          {typeof localValue === 'string' && localValue && (
             <p className="text-xs text-primary mb-2">
               Aktiv: {buildBreadcrumb(regionTree, localValue as string).join(' › ')}
             </p>
@@ -109,8 +111,41 @@ function SettingRow({ setting, regionTree, canEdit }: SettingRowProps) {
         </div>
       )}
 
+      {/* Hero image list picker */}
+      {setting.type === 'image_list' && (
+        <div className="mt-3">
+          {Array.isArray(localValue) && (localValue as string[]).length > 0 ? (
+            <p className="text-xs text-primary mb-2">
+              {(localValue as string[]).length} Bild{(localValue as string[]).length !== 1 ? 'er' : ''} ausgewählt
+            </p>
+          ) : (
+            <p className="text-xs text-base-content/40 mb-2">Keine Bilder — automatisch aus der Standard-Region</p>
+          )}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="btn btn-outline btn-xs"
+            >
+              Bilder auswählen
+            </button>
+          )}
+          {pickerOpen && (
+            <HeroImagePickerModal
+              selectedIds={(localValue as string[]) ?? []}
+              onConfirm={(ids) => {
+                setLocalValue(ids);
+                setPickerOpen(false);
+                mutation.mutate(ids);
+              }}
+              onClose={() => setPickerOpen(false)}
+            />
+          )}
+        </div>
+      )}
+
       {/* Save button for non-boolean/non-toggle types */}
-      {setting.type !== 'boolean' && canEdit && isDirty && (
+      {setting.type !== 'boolean' && setting.type !== 'image_list' && canEdit && isDirty && (
         <div className="mt-3 flex items-center gap-2">
           <button
             onClick={() => mutation.mutate(localValue)}

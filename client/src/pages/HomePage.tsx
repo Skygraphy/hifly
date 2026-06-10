@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { UserMenu } from '../components/layout/UserMenu';
 import { fetchSettings } from '../api/settings';
 import { fetchRegionTree, type RegionNode } from '../api/regions';
-import { fetchImages } from '../api/images';
+import { fetchImages, fetchImage } from '../api/images';
 
 const PILLS = [
   { sym: '◎', label: 'Regionen durchsuchen' },
@@ -51,6 +51,9 @@ export function HomePage() {
   const defaultRegionId = (settings?.find((s) => s.key === 'default_region_id')?.value as string) || null;
   const hasDefaultRegion = !!defaultRegionId && defaultRegionId !== 'null';
 
+  const heroImageIds = (settings?.find((s) => s.key === 'hero_image_ids')?.value as string[]) ?? [];
+  const hasHeroImages = Array.isArray(heroImageIds) && heroImageIds.length > 0;
+
   // Load region tree to look up region name
   const { data: regionTree = [] } = useQuery({
     queryKey: ['regions'],
@@ -62,14 +65,30 @@ export function HomePage() {
     ? findRegionById(regionTree, defaultRegionId!)?.name ?? null
     : null;
 
-  // Load 3 sample images from the default region
+  // Load 3 sample images from the default region (fallback when no hero images configured)
   const { data: sampleGallery } = useQuery({
     queryKey: ['hero-samples', defaultRegionId],
     queryFn: () => fetchImages({ regionId: defaultRegionId!, status: 'ready', page: 1, limit: 3 }),
-    enabled: hasDefaultRegion,
+    enabled: hasDefaultRegion && !hasHeroImages,
     staleTime: 120000,
   });
   const sampleImages = sampleGallery?.data ?? [];
+
+  // Load specific hero images from settings
+  const heroImageQueries = useQueries({
+    queries: heroImageIds.map((id) => ({
+      queryKey: ['hero-image', id],
+      queryFn: () => fetchImage(id),
+      staleTime: 120000,
+      enabled: hasHeroImages,
+    })),
+  });
+  const heroImagesLoaded = heroImageQueries.map((q) => q.data ?? null);
+
+  // Images shown in hero: either specific pinned images or fallback from default region
+  const displayImages: Array<{ id: string; thumbUrl: string | null; address: string } | null> = hasHeroImages
+    ? heroImagesLoaded
+    : Array.from({ length: 3 }, (_, i) => sampleImages[i] ?? null);
 
   return (
     <div
@@ -225,10 +244,9 @@ export function HomePage() {
           </Link>
         </div>
 
-        {/* Sample images from default region */}
-        <div className="fade-up-5 flex gap-3 mt-10 justify-center">
-          {Array.from({ length: 3 }).map((_, i) => {
-            const img = sampleImages[i];
+        {/* Sample images — either pinned hero images or fallback from default region */}
+        <div className="fade-up-5 flex gap-3 mt-10 justify-center flex-wrap">
+          {displayImages.map((img, i) => {
             if (img?.thumbUrl) {
               return (
                 <Link
@@ -242,7 +260,6 @@ export function HomePage() {
                     alt={img.address}
                     className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity duration-300"
                   />
-                  {/* Subtle overlay with address */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-2">
                     <p className="text-white text-[9px] font-medium leading-tight truncate w-full">{img.address}</p>
                   </div>
@@ -253,7 +270,6 @@ export function HomePage() {
                 </Link>
               );
             }
-            // Placeholder card
             return (
               <div
                 key={i}

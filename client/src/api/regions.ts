@@ -1,8 +1,30 @@
 import { apiClient } from './client';
 
+export type RegionLevel =
+  | 'federal'
+  | 'state'
+  | 'district'
+  | 'statutory_city'
+  | 'municipality'
+  | 'cadastral_municipality'
+  | 'area';
+
+export const REGION_LEVEL_LABELS: Record<RegionLevel, string> = {
+  federal: 'Bund',
+  state: 'Bundesland',
+  district: 'Bezirk',
+  statutory_city: 'Statutarstadt',
+  municipality: 'Gemeinde',
+  cadastral_municipality: 'Katastralgemeinde',
+  area: 'Gebiet',
+};
+
 export interface RegionNode {
   id: string;
   name: string;
+  short_name: string | null;
+  level: RegionLevel;
+  code: string | null;
   children: RegionNode[];
 }
 
@@ -11,12 +33,25 @@ export async function fetchRegionTree(): Promise<RegionNode[]> {
   return data.data;
 }
 
-export async function createRegion(name: string, parentId: string | null): Promise<void> {
-  await apiClient.post('/regions', { name, parentId });
+export async function createRegion(
+  name: string,
+  parentId: string | null,
+  level: RegionLevel,
+  code: string | null,
+  shortName: string | null = null,
+): Promise<void> {
+  await apiClient.post('/regions', { name, shortName, parentId, level, code });
 }
 
-export async function deleteRegion(id: string): Promise<void> {
-  await apiClient.delete(`/regions/${id}`);
+export async function updateRegion(
+  id: string,
+  updates: { name?: string; shortName?: string | null; code?: string | null; level?: RegionLevel },
+): Promise<void> {
+  await apiClient.patch(`/regions/${id}`, updates);
+}
+
+export async function deleteRegion(id: string, force = false): Promise<void> {
+  await apiClient.delete(`/regions/${id}${force ? '?force=true' : ''}`);
 }
 
 export async function updateImageRegion(imageId: string, regionId: string | null): Promise<void> {

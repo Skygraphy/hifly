@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { generateUploadUrl } from '../services/s3.service';
 import { findByChecksum } from '../services/duplicates.service';
 import { createImage, updateImageStatus } from '../services/images.service';
+import * as regionsService from '../services/regions.service';
 import { getSetting } from '../services/settings.service';
 import type { UploadInitiateResult } from '../types';
 
@@ -26,6 +27,7 @@ const initiateSchema = z.object({
     fileSize: z.number().int().positive(),
     checksum: z.string().length(64),
     tags: z.array(z.string()).optional().default([]),
+    regionId: z.string().uuid().nullable().optional(),
   })).min(1).max(100),
 });
 
@@ -51,6 +53,15 @@ export async function initiate(req: Request, res: Response, next: NextFunction) 
 
         const presignedUrl = await generateUploadUrl(s3Key);
 
+        let regionPath: string[] = [];
+        let regionPathIds: string[] = [];
+        if (file.regionId) {
+          [regionPath, regionPathIds] = await Promise.all([
+            regionsService.getRegionPathById(file.regionId),
+            regionsService.getRegionPathIdsById(file.regionId),
+          ]);
+        }
+
         await createImage({
           id,
           hash: parsed.hash,
@@ -63,6 +74,9 @@ export async function initiate(req: Request, res: Response, next: NextFunction) 
           checksum: file.checksum,
           tags: file.tags ?? [],
           uploadedBy: req.user!.userId,
+          regionId: file.regionId ?? null,
+          regionPath,
+          regionPathIds,
         });
 
         return { id, hash: parsed.hash, isDuplicate: false, presignedUrl, s3Key };

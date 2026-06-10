@@ -10,7 +10,7 @@ export interface ListParams {
   tags?: string[];
   address?: string;
   status?: ProcessingStatus;
-  regionName?: string; // filter by region ancestor name
+  regionId?: string; // filter by region UUID (includes descendants via region_path_ids)
   page: number;
   limit: number;
 }
@@ -61,9 +61,8 @@ export async function listImages(params: ListParams, user?: AuthPayload): Promis
   if (params.status) {
     query = query.eq('processing_status', params.status);
   }
-  if (params.regionName) {
-    // Find all images whose region_path contains the given region name (includes descendants)
-    query = query.contains('region_path', [params.regionName]);
+  if (params.regionId) {
+    query = query.contains('region_path_ids', [params.regionId]);
   }
 
   const { data, error, count } = await query;
@@ -135,10 +134,15 @@ export async function getImage(id: string, user?: AuthPayload): Promise<ImageDet
   };
 }
 
-export async function setImageRegion(imageId: string, regionId: string | null, regionPath: string[]): Promise<void> {
+export async function setImageRegion(
+  imageId: string,
+  regionId: string | null,
+  regionPath: string[],
+  regionPathIds: string[],
+): Promise<void> {
   const { error } = await supabase
     .from('images')
-    .update({ region_id: regionId, region_path: regionPath })
+    .update({ region_id: regionId, region_path: regionPath, region_path_ids: regionPathIds })
     .eq('id', imageId);
   if (error) throw error;
 }
@@ -155,6 +159,9 @@ export async function createImage(params: {
   checksum: string;
   tags: string[];
   uploadedBy: string;
+  regionId?: string | null;
+  regionPath?: string[];
+  regionPathIds?: string[];
 }): Promise<void> {
   const { error } = await supabase.from('images').insert({
     id: params.id,
@@ -169,8 +176,47 @@ export async function createImage(params: {
     tags: params.tags,
     processing_status: 'pending',
     uploaded_by: params.uploadedBy,
+    ...(params.regionId ? {
+      region_id: params.regionId,
+      region_path: params.regionPath ?? [],
+      region_path_ids: params.regionPathIds ?? [],
+    } : {}),
   });
   if (error) throw error;
+}
+
+export async function setImageRegionBulk(
+  ids: string[],
+  regionId: string | null,
+  regionPath: string[],
+  regionPathIds: string[],
+): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from('images')
+    .update({ region_id: regionId, region_path: regionPath, region_path_ids: regionPathIds })
+    .in('id', ids);
+  if (error) throw error;
+}
+
+export async function updateTagsBulk(
+  ids: string[],
+  tags: string[],
+  mode: 'replace' | 'merge' = 'replace',
+): Promise<void> {
+  if (ids.length === 0) return;
+  if (mode === 'replace') {
+    const { error } = await supabase.from('images').update({ tags }).in('id', ids);
+    if (error) throw error;
+  } else {
+    const { data, error } = await supabase.from('images').select('id, tags').in('id', ids);
+    if (error) throw error;
+    await Promise.all((data ?? []).map(async (row: { id: string; tags: string[] }) => {
+      const merged = Array.from(new Set([...(row.tags ?? []), ...tags]));
+      const { error: ue } = await supabase.from('images').update({ tags: merged }).eq('id', row.id);
+      if (ue) throw ue;
+    }));
+  }
 }
 
 export async function updateImageStatus(id: string, status: DbProcessingStatus, errorMsg?: string): Promise<void> {

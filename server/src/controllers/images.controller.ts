@@ -20,18 +20,12 @@ export async function list(req: Request, res: Response, next: NextFunction) {
   try {
     const params = listSchema.parse(req.query);
 
-    // Resolve regionId → region name for path containment filter
-    let regionName: string | undefined;
-    if (params.regionId) {
-      regionName = (await regionsService.getRegionName(params.regionId)) ?? undefined;
-    }
-
     const { data, total } = await imagesService.listImages(
       {
         tags: params.tags as string[],
         address: params.address,
         status: params.status as ProcessingStatus | undefined,
-        regionName,
+        regionId: params.regionId,
         page: params.page,
         limit: params.limit,
       },
@@ -114,6 +108,51 @@ export async function deleteBulk(req: Request, res: Response, next: NextFunction
   }
 }
 
+const bulkRegionSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(500),
+  regionId: z.string().uuid().nullable(),
+});
+
+export async function updateRegionBulk(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { ids, regionId } = bulkRegionSchema.parse(req.body);
+
+    let regionPath: string[] = [];
+    let regionPathIds: string[] = [];
+    if (regionId) {
+      [regionPath, regionPathIds] = await Promise.all([
+        regionsService.getRegionPathById(regionId),
+        regionsService.getRegionPathIdsById(regionId),
+      ]);
+      if (regionPath.length === 0) {
+        res.status(404).json({ error: 'Region not found' });
+        return;
+      }
+    }
+
+    await imagesService.setImageRegionBulk(ids, regionId, regionPath, regionPathIds);
+    res.json({ data: { updated: ids.length } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const bulkTagsSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(500),
+  tags: z.array(z.string().min(1).max(50)).max(20),
+  mode: z.enum(['replace', 'merge']).default('replace'),
+});
+
+export async function updateTagsBulk(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { ids, tags, mode } = bulkTagsSchema.parse(req.body);
+    await imagesService.updateTagsBulk(ids, tags, mode);
+    res.json({ data: { updated: ids.length } });
+  } catch (err) {
+    next(err);
+  }
+}
+
 const regionSchema = z.object({
   regionId: z.string().uuid().nullable(),
 });
@@ -126,15 +165,19 @@ export async function updateRegion(req: Request, res: Response, next: NextFuncti
     await imagesService.assertCanModify(id, req.user!);
 
     let regionPath: string[] = [];
+    let regionPathIds: string[] = [];
     if (regionId) {
-      regionPath = await regionsService.getRegionPathById(regionId);
+      [regionPath, regionPathIds] = await Promise.all([
+        regionsService.getRegionPathById(regionId),
+        regionsService.getRegionPathIdsById(regionId),
+      ]);
       if (regionPath.length === 0) {
         res.status(404).json({ error: 'Region not found' });
         return;
       }
     }
 
-    await imagesService.setImageRegion(id, regionId, regionPath);
+    await imagesService.setImageRegion(id, regionId, regionPath, regionPathIds);
     res.json({ data: { id, regionId, regionPath } });
   } catch (err) {
     next(err);

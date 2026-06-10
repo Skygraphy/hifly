@@ -50,6 +50,7 @@ export function DropZone({ disabled }: DropZoneProps) {
         parsed,
         checksum: null,
         individualTags: [],
+        individualRegionId: null,
         status: 'queued',
         progress: 0,
       });

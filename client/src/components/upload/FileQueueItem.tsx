@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TagInput } from '../common/TagInput';
+import { RegionTreePicker } from '../common/RegionTreePicker';
 import { ProgressBar } from './ProgressBar';
 import { TagBadge } from '../common/TagBadge';
 import { useUploadStore, getMergedTags, type UploadFile } from '../../stores/uploadStore';
 import { fetchTags } from '../../api/tags';
+import { fetchRegionTree, findRegion } from '../../api/regions';
 
 const STATUS_LABELS: Record<UploadFile['status'], string> = {
   queued:     'Wartend',
@@ -20,11 +23,17 @@ interface FileQueueItemProps {
 }
 
 export function FileQueueItem({ file }: FileQueueItemProps) {
-  const { batchTags, removeFile, setIndividualTags } = useUploadStore();
+  const { batchTags, batchRegionId, removeFile, setIndividualTags, setIndividualRegionId } = useUploadStore();
   const { data: tagData } = useQuery({ queryKey: ['tags'], queryFn: fetchTags, staleTime: 60000 });
+  const { data: regionTree = [] } = useQuery({ queryKey: ['regions'], queryFn: fetchRegionTree, staleTime: 300000 });
+
   const suggestions = tagData?.map((t) => t.tag) ?? [];
+  const [pickingRegion, setPickingRegion] = useState(false);
 
   const mergedTags = getMergedTags(file, batchTags);
+  const individualRegion = file.individualRegionId ? findRegion(regionTree, file.individualRegionId) : null;
+  const batchRegion = batchRegionId ? findRegion(regionTree, batchRegionId) : null;
+
   const isActive = ['uploading', 'hashing', 'processing'].includes(file.status);
   const isDone = file.status === 'done';
   const isError = file.status === 'error';
@@ -71,8 +80,70 @@ export function FileQueueItem({ file }: FileQueueItemProps) {
             <ProgressBar value={file.progress} className="mt-3" />
           )}
 
+          {/* Individual region — only editable when queued */}
+          {file.status === 'queued' && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-base-content/40">Individuelle Region:</p>
+                <div className="flex items-center gap-1.5">
+                  {file.individualRegionId && (
+                    <button
+                      type="button"
+                      onClick={() => { setIndividualRegionId(file.id, null); setPickingRegion(false); }}
+                      className="text-xs text-base-content/30 hover:text-error transition-colors"
+                      title="Individuelle Region entfernen (Batch verwenden)"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPickingRegion((v) => !v)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {file.individualRegionId ? 'Ändern' : 'Zuweisen'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Current effective region */}
+              {file.individualRegionId ? (
+                <p className="text-xs text-base-content/70">
+                  {individualRegion?.name ?? '…'}
+                </p>
+              ) : batchRegion ? (
+                <p className="text-xs text-base-content/30">
+                  Batch: {batchRegion.name}
+                </p>
+              ) : (
+                <p className="text-xs text-base-content/20">Keine Region</p>
+              )}
+
+              {/* Tree picker */}
+              {pickingRegion && (
+                <div className="mt-2 max-h-40 overflow-y-auto border border-base-content/8 rounded-lg p-1.5 bg-base-300">
+                  <button
+                    type="button"
+                    onClick={() => { setIndividualRegionId(file.id, null); setPickingRegion(false); }}
+                    className="w-full text-left text-xs text-base-content/40 hover:text-error px-2 py-1 mb-0.5"
+                  >
+                    ✕ Keine individuelle Region
+                  </button>
+                  <RegionTreePicker
+                    nodes={regionTree}
+                    selectedId={file.individualRegionId}
+                    onSelect={(node) => {
+                      setIndividualRegionId(file.id, node?.id ?? null);
+                      setPickingRegion(false);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Tags — only editable when queued */}
-          {(file.status === 'queued') && (
+          {file.status === 'queued' && (
             <div className="mt-3">
               <p className="text-xs text-base-content/40 mb-1">Individuelle Tags:</p>
               <TagInput

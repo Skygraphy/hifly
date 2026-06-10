@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGalleryStore } from '../../stores/galleryStore';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { BulkEditModal } from './BulkEditModal';
 import { useGallery } from '../../hooks/useGallery';
 
 export function BulkActionBar() {
@@ -8,14 +9,17 @@ export function BulkActionBar() {
   const { removeBulk } = useGallery();
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const count = selectedIds.size;
   if (count === 0) return null;
 
+  const ids = Array.from(selectedIds);
+
   async function handleDelete() {
     setLoading(true);
     try {
-      await removeBulk(Array.from(selectedIds));
+      await removeBulk(ids);
       clearSelection();
     } finally {
       setLoading(false);
@@ -35,6 +39,12 @@ export function BulkActionBar() {
           Abwählen
         </button>
         <button
+          onClick={() => setEditOpen(true)}
+          className="btn btn-outline btn-sm"
+        >
+          Bearbeiten
+        </button>
+        <button
           onClick={() => setConfirming(true)}
           disabled={loading}
           className="btn btn-error btn-sm"
@@ -43,6 +53,14 @@ export function BulkActionBar() {
           Löschen
         </button>
       </div>
+
+      {editOpen && (
+        <BulkEditModal
+          ids={ids}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => setEditOpen(false)}
+        />
+      )}
 
       {confirming && (
         <ConfirmDialog

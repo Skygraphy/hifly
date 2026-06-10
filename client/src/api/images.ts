@@ -44,6 +44,7 @@ export interface UploadInitiateFile {
   fileSize: number;
   checksum: string;
   tags?: string[];
+  regionId?: string | null;
 }
 
 export interface UploadInitiateResult {
@@ -94,6 +95,14 @@ export async function deleteImage(id: string): Promise<void> {
 
 export async function deleteImages(ids: string[]): Promise<void> {
   await apiClient.delete('/images', { data: { ids } });
+}
+
+export async function bulkUpdateRegion(ids: string[], regionId: string | null): Promise<void> {
+  await apiClient.patch('/images/bulk/region', { ids, regionId });
+}
+
+export async function bulkUpdateTags(ids: string[], tags: string[], mode: 'replace' | 'merge' = 'replace'): Promise<void> {
+  await apiClient.patch('/images/bulk/tags', { ids, tags, mode });
 }
 
 export async function initiateUpload(files: UploadInitiateFile[]): Promise<UploadInitiateResult[]> {

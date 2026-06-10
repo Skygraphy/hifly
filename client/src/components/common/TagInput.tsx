@@ -14,12 +14,12 @@ export function TagInput({ tags, onChange, placeholder = 'Tag hinzufügen…', s
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const filtered = suggestions.filter(
-    (s) => s.toLowerCase().includes(input.toLowerCase()) && !tags.includes(s)
+    (s) => s.toLowerCase().includes(input.toLowerCase()) && !tags.some((t) => t.toLowerCase() === s.toLowerCase())
   ).slice(0, 8);
 
   function addTag(tag: string) {
-    const trimmed = tag.trim().toLowerCase();
-    if (trimmed && !tags.includes(trimmed)) {
+    const trimmed = tag.trim();
+    if (trimmed && !tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
       onChange([...tags, trimmed]);
     }
     setInput('');

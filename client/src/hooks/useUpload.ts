@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useUploadStore, getMergedTags } from '../stores/uploadStore';
+import { useUploadStore, getMergedTags, getMergedRegionId } from '../stores/uploadStore';
 import { sha256File } from '../lib/checksum';
 import { initiateUpload, confirmUpload, uploadToS3, fetchImage } from '../api/images';
 
@@ -33,13 +33,15 @@ export function useUpload() {
     if (withChecksum.length === 0) return;
 
     // Step 2: initiate upload batch
-    // Read batchTags fresh from store to avoid stale closure
+    // Read batchTags and batchRegionId fresh from store to avoid stale closure
     const currentBatchTags = useUploadStore.getState().batchTags;
+    const currentBatchRegionId = useUploadStore.getState().batchRegionId;
     const initiatePayload = withChecksum.map((f) => ({
       filename: f.file.name,
       fileSize: f.file.size,
       checksum: f.checksum!,
       tags: getMergedTags(f, currentBatchTags),
+      regionId: getMergedRegionId(f, currentBatchRegionId),
     }));
     console.log('[upload] tags per file:', initiatePayload.map(p => `${p.filename}: [${p.tags.join(',')}]`));
 
