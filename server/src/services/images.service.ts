@@ -1,14 +1,15 @@
 import { supabase } from '../config/supabase';
 import { generateDownloadUrl, generateAllUrls } from './s3.service';
+import { imageMap } from '../image_data/klosterneuburg_stadt';
 import type { ImageRow, ImageSummary, ImageDetail, ProcessingStatus, DbProcessingStatus, AuthPayload } from '../types';
 
 // capture_date is excluded from all SELECT queries intentionally
-const SUMMARY_FIELDS = 'id, hash, address, tags, processing_status, upload_timestamp, file_size_bytes, s3_key_prefix, uploaded_by, region_id, region_path';
+const SUMMARY_FIELDS = 'id, hash, main_location, secondary_locations, tags, user_tags, web_visible, web_ranking, print_visible, print_ranking, lat, lng, processing_status, upload_timestamp, file_size_bytes, s3_key_prefix, uploaded_by, region_id, region_path';
 const DETAIL_FIELDS = `${SUMMARY_FIELDS}, original_filename`;
 
 export interface ListParams {
   tags?: string[];
-  address?: string;
+  main_location?: string;
   status?: ProcessingStatus;
   regionId?: string; // filter by region UUID (includes descendants via region_path_ids)
   page: number;
@@ -55,8 +56,8 @@ export async function listImages(params: ListParams, user?: AuthPayload): Promis
   if (params.tags && params.tags.length > 0) {
     query = query.contains('tags', params.tags);
   }
-  if (params.address) {
-    query = query.ilike('address', `%${params.address}%`);
+  if (params.main_location) {
+    query = query.ilike('main_location', `%${params.main_location}%`);
   }
   if (params.status) {
     query = query.eq('processing_status', params.status);
@@ -68,11 +69,12 @@ export async function listImages(params: ListParams, user?: AuthPayload): Promis
   const { data, error, count } = await query;
   if (error) throw error;
 
-  type SummaryRow = Pick<ImageRow, 'id' | 'hash' | 'address' | 'tags' | 'processing_status' | 'upload_timestamp' | 'file_size_bytes' | 's3_key_prefix' | 'region_id' | 'region_path'> & { uploaded_by: string | null };
+  type SummaryRow = Pick<ImageRow, 'id' | 'hash' | 'main_location' | 'secondary_locations' | 'tags' | 'user_tags' | 'web_visible' | 'web_ranking' | 'print_visible' | 'print_ranking' | 'lat' | 'lng' | 'processing_status' | 'upload_timestamp' | 'file_size_bytes' | 's3_key_prefix' | 'region_id' | 'region_path'> & { uploaded_by: string | null };
   const rows = (data ?? []) as SummaryRow[];
 
   const summaries: ImageSummary[] = await Promise.all(
     rows.map(async (row) => {
+      const meta = imageMap.get(row.id.normalize('NFC'));
       let thumbUrl: string | null = null;
       if (row.processing_status === 'ready') {
         thumbUrl = await generateDownloadUrl(`${row.s3_key_prefix}thumb.jpg`);
@@ -80,8 +82,16 @@ export async function listImages(params: ListParams, user?: AuthPayload): Promis
       return {
         id: row.id,
         hash: row.hash,
-        address: row.address,
-        tags: row.tags,
+        main_location:       row.main_location       ?? meta?.main_location       ?? '',
+        secondary_locations: row.secondary_locations ?? meta?.secondary_locations ?? [],
+        tags:                row.tags,
+        user_tags:           row.user_tags            ?? meta?.user_tags           ?? [],
+        web_visible:         row.web_visible         ?? meta?.web_visible         ?? true,
+        web_ranking:         row.web_ranking         ?? meta?.web_ranking         ?? 1,
+        print_visible:       row.print_visible       ?? meta?.print_visible       ?? true,
+        print_ranking:       row.print_ranking       ?? meta?.print_ranking       ?? 1,
+        lat:                 row.lat                 ?? meta?.lat_lng?.[0]        ?? null,
+        lng:                 row.lng                 ?? meta?.lat_lng?.[1]        ?? null,
         status: toClientStatus(row.processing_status),
         thumbUrl,
         uploadTimestamp: row.upload_timestamp,
@@ -106,8 +116,9 @@ export async function getImage(id: string, user?: AuthPayload): Promise<ImageDet
   if (error) throw error;
   if (!data) return null;
 
-  type DetailRow = Pick<ImageRow, 'id' | 'hash' | 'address' | 'tags' | 'processing_status' | 'upload_timestamp' | 'file_size_bytes' | 's3_key_prefix' | 'original_filename' | 'region_id' | 'region_path'> & { uploaded_by: string | null };
+  type DetailRow = Pick<ImageRow, 'id' | 'hash' | 'main_location' | 'secondary_locations' | 'tags' | 'user_tags' | 'web_visible' | 'web_ranking' | 'print_visible' | 'print_ranking' | 'lat' | 'lng' | 'processing_status' | 'upload_timestamp' | 'file_size_bytes' | 's3_key_prefix' | 'original_filename' | 'region_id' | 'region_path'> & { uploaded_by: string | null };
   const row = data as DetailRow;
+  const meta = imageMap.get(row.id);
 
   let urls: ImageDetail['urls'] = { thumb: null, small: null, medium: null, large: null, original: null };
   if (row.processing_status === 'ready' && canDownload(user?.role)) {
@@ -120,8 +131,16 @@ export async function getImage(id: string, user?: AuthPayload): Promise<ImageDet
   return {
     id: row.id,
     hash: row.hash,
-    address: row.address,
-    tags: row.tags,
+    main_location:       row.main_location       ?? meta?.main_location       ?? '',
+    secondary_locations: row.secondary_locations ?? meta?.secondary_locations ?? [],
+    tags:                row.tags,
+    user_tags:           row.user_tags            ?? meta?.user_tags           ?? [],
+    web_visible:         row.web_visible         ?? meta?.web_visible         ?? true,
+    web_ranking:         row.web_ranking         ?? meta?.web_ranking         ?? 1,
+    print_visible:       row.print_visible       ?? meta?.print_visible       ?? true,
+    print_ranking:       row.print_ranking       ?? meta?.print_ranking       ?? 1,
+    lat:                 row.lat                 ?? meta?.lat_lng?.[0]        ?? null,
+    lng:                 row.lng                 ?? meta?.lat_lng?.[1]        ?? null,
     status: toClientStatus(row.processing_status),
     thumbUrl: urls.thumb,
     uploadTimestamp: row.upload_timestamp,
@@ -151,7 +170,7 @@ export async function createImage(params: {
   id: string;
   hash: string;
   originalFilename: string;
-  address: string;
+  main_location: string;
   captureDate: string;
   sequenceNumber: string;
   s3KeyPrefix: string;
@@ -167,7 +186,7 @@ export async function createImage(params: {
     id: params.id,
     hash: params.hash,
     original_filename: params.originalFilename,
-    address: params.address,
+    main_location: params.main_location,
     capture_date: params.captureDate,
     sequence_number: params.sequenceNumber,
     s3_key_prefix: params.s3KeyPrefix,

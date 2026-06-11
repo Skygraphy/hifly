@@ -122,7 +122,7 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
           <div className="flex items-start justify-between p-4 border-b border-base-content/8">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-semibold text-base-content">{detail?.address ?? image.address}</h2>
+                <h2 className="font-semibold text-base-content">{detail?.main_location ?? image.main_location}</h2>
                 <span className="font-mono text-sm text-primary bg-primary/10 px-2 py-0.5 rounded">
                   #{detail?.hash ?? image.hash}
                 </span>
@@ -148,7 +148,7 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
               ) : detail?.urls.large ? (
                 <img
                   src={detail.urls.large}
-                  alt={detail.address}
+                  alt={detail.main_location}
                   className="max-w-full max-h-full object-contain"
                   style={{ maxHeight: '60vh' }}
                 />
@@ -266,7 +266,7 @@ export function ImageModal({ image, onClose, onDeleted }: ImageModalProps) {
       {confirmDelete && (
         <ConfirmDialog
           title="Bild löschen?"
-          message={`#${image.hash} — ${image.address} wird unwiderruflich gelöscht (DNG + alle JPGs).`}
+          message={`#${image.hash} — ${image.main_location} wird unwiderruflich gelöscht (DNG + alle JPGs).`}
 
           confirmLabel="Endgültig löschen"
           onConfirm={handleDelete}

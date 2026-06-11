@@ -9,7 +9,7 @@ const listSchema = z.object({
   tags: z.union([z.string(), z.array(z.string())]).optional().transform((v) =>
     v === undefined ? [] : Array.isArray(v) ? v : [v]
   ),
-  address: z.string().optional(),
+  main_location: z.string().optional(),
   status: z.enum(['pending', 'processing', 'ready', 'error']).optional(),
   regionId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -23,7 +23,7 @@ export async function list(req: Request, res: Response, next: NextFunction) {
     const { data, total } = await imagesService.listImages(
       {
         tags: params.tags as string[],
-        address: params.address,
+        main_location: params.main_location,
         status: params.status as ProcessingStatus | undefined,
         regionId: params.regionId,
         page: params.page,

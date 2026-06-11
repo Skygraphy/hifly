@@ -7,8 +7,16 @@ export type DbProcessingStatus = ProcessingStatus | 'uploaded';
 export interface ImageSummary {
   id: string;        // full filename without extension (primary key)
   hash: string;      // 4-char display/reference code
-  address: string;
+  main_location: string;
+  secondary_locations: string[];
   tags: string[];
+  user_tags: string[];
+  web_visible: boolean;
+  web_ranking: number;
+  print_visible: boolean;
+  print_ranking: number;
+  lat: number | null;
+  lng: number | null;
   status: ProcessingStatus;
   thumbUrl: string | null;
   uploadTimestamp: string;
@@ -33,13 +41,21 @@ export interface ImageRow {
   id: string;
   hash: string;
   original_filename: string;
-  address: string;
+  main_location: string;
   capture_date: string; // never sent to client
   sequence_number: string | null;
   s3_key_prefix: string;
   file_size_bytes: number | null;
   checksum: string;
   tags: string[];
+  secondary_locations: string[];
+  user_tags: string[];
+  web_visible: boolean;
+  web_ranking: number;
+  print_visible: boolean;
+  print_ranking: number;
+  lat: number | null;
+  lng: number | null;
   upload_timestamp: string;
   processing_status: DbProcessingStatus;
   processing_error: string | null;

@@ -86,7 +86,7 @@ export function HomePage() {
   const heroImagesLoaded = heroImageQueries.map((q) => q.data ?? null);
 
   // Images shown in hero: either specific pinned images or fallback from default region
-  const displayImages: Array<{ id: string; thumbUrl: string | null; address: string } | null> = hasHeroImages
+  const displayImages: Array<{ id: string; thumbUrl: string | null; main_location: string } | null> = hasHeroImages
     ? heroImagesLoaded
     : Array.from({ length: 3 }, (_, i) => sampleImages[i] ?? null);
 
@@ -257,11 +257,11 @@ export function HomePage() {
                 >
                   <img
                     src={img.thumbUrl}
-                    alt={img.address}
+                    alt={img.main_location}
                     className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-2">
-                    <p className="text-white text-[9px] font-medium leading-tight truncate w-full">{img.address}</p>
+                    <p className="text-white text-[9px] font-medium leading-tight truncate w-full">{img.main_location}</p>
                   </div>
                   <div
                     className="absolute inset-0 rounded-2xl"

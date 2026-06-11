@@ -14,7 +14,7 @@ function parseFilename(filename: string) {
   const m = filename.match(FILENAME_RE);
   if (!m) return null;
   return {
-    address: m[1].replace(/_/g, ' '),
+    main_location: m[1].replace(/_/g, ' '),
     captureDate: `${m[2]}-${m[3]}-${m[4]}`,
     sequenceNumber: m[5],
     hash: m[6].toUpperCase(),
@@ -66,7 +66,7 @@ export async function initiate(req: Request, res: Response, next: NextFunction) 
           id,
           hash: parsed.hash,
           originalFilename: file.filename,
-          address: parsed.address,
+          main_location: parsed.main_location,
           captureDate: parsed.captureDate,
           sequenceNumber: parsed.sequenceNumber,
           s3KeyPrefix,

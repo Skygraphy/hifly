@@ -51,7 +51,7 @@ export function FileQueueItem({ file }: FileQueueItemProps) {
           {/* Address + Hash */}
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="font-medium text-base-content truncate">
-              {file.parsed.address}
+              {file.parsed.main_location}
             </span>
             <span className="font-mono text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
               #{file.parsed.hash}

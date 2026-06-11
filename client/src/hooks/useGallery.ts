@@ -15,7 +15,7 @@ export function useGallery() {
     queryFn: ({ pageParam = 1 }) =>
       fetchImages({
         tags: filterTags,
-        address: filterAddress,
+        main_location: filterAddress,
         regionId: filterRegionId ?? undefined,
         page: pageParam as number,
         limit: LIMIT,

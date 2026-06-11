@@ -1061,3 +1061,13 @@
     { id: "Ölbergsiedlung_2024_07_14_005_E166", hash: "E166", lat_lng: [48.31279651609203, 16.291399730263713], main_location: "Ölbergsiedlung", secondary_locations: [], tags: [], user_tags: [], cluster: "R", web_visible: true, web_ranking: 1, print_visible: true, print_ranking: 1 },
     { id: "Ölbergsiedlung_2024_07_14_006_A7B2", hash: "A7B2", lat_lng: [48.31335848232293, 16.289340632664942], main_location: "Ölbergsiedlung", secondary_locations: [], tags: [], user_tags: [], cluster: "R", web_visible: true, web_ranking: 1, print_visible: true, print_ranking: 1 },
 ]
+
+export const imageMap = new Map(images.map(img => [img.id.normalize('NFC'), img]));
+
+export const BASE_REGION_PATH = [
+  'Österreich', 'Niederösterreich', 'Tulln', 'Klosterneuburg', 'Klosterneuburg Stadt',
+];
+
+export const CLUSTER_LETTERS = [
+  'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W',
+] as const;

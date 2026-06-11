@@ -34,7 +34,7 @@ export function ImageCard({ image, onClick, anySelected }: ImageCardProps) {
         {image.thumbUrl && !imgError ? (
           <img
             src={image.thumbUrl}
-            alt={image.address}
+            alt={image.main_location}
             loading="lazy"
             onError={() => setImgError(true)}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -86,8 +86,8 @@ export function ImageCard({ image, onClick, anySelected }: ImageCardProps) {
 
       {/* Info */}
       <div className="p-3">
-        <p className="text-sm font-medium text-base-content truncate" title={image.address}>
-          {image.address}
+        <p className="text-sm font-medium text-base-content truncate" title={image.main_location}>
+          {image.main_location}
         </p>
         <div className="flex items-center justify-between mt-1">
           <span className="font-mono text-xs text-primary">#{image.hash}</span>

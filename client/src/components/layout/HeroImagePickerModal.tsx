@@ -86,7 +86,7 @@ export function HeroImagePickerModal({ selectedIds, onConfirm, onClose }: HeroIm
                       `}
                     >
                       {img.thumbUrl ? (
-                        <img src={img.thumbUrl} alt={img.address} className="w-full h-full object-cover" />
+                        <img src={img.thumbUrl} alt={img.main_location} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full bg-base-300" />
                       )}

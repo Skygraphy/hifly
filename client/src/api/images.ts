@@ -5,8 +5,16 @@ export type ProcessingStatus = 'pending' | 'processing' | 'ready' | 'error';
 export interface ImageSummary {
   id: string;        // full filename without extension (primary key)
   hash: string;      // 4-char display/reference code
-  address: string;
+  main_location: string;
+  secondary_locations: string[];
   tags: string[];
+  user_tags: string[];
+  web_visible: boolean;
+  web_ranking: number;
+  print_visible: boolean;
+  print_ranking: number;
+  lat: number | null;
+  lng: number | null;
   status: ProcessingStatus;
   thumbUrl: string | null;
   uploadTimestamp: string;
@@ -58,7 +66,7 @@ export interface UploadInitiateResult {
 
 export async function fetchImages(params: {
   tags?: string[];
-  address?: string;
+  main_location?: string;
   status?: ProcessingStatus;
   regionId?: string;
   page: number;
@@ -68,7 +76,7 @@ export async function fetchImages(params: {
   searchParams.set('page', String(params.page));
   searchParams.set('limit', String(params.limit));
   if (params.tags?.length) params.tags.forEach((t) => searchParams.append('tags[]', t));
-  if (params.address) searchParams.set('address', params.address);
+  if (params.main_location) searchParams.set('main_location', params.main_location);
   if (params.status) searchParams.set('status', params.status);
   if (params.regionId) searchParams.set('regionId', params.regionId);
 

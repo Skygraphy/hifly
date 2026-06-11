@@ -11,6 +11,7 @@ import tagsRoutes from './routes/tags.routes';
 import usersRoutes from './routes/users.routes';
 import regionsRoutes from './routes/regions.routes';
 import settingsRoutes from './routes/settings.routes';
+import adminRoutes from './routes/admin.routes';
 
 export function createApp() {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp() {
   app.use('/api/users', usersRoutes);
   app.use('/api/regions', regionsRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/admin', adminRoutes);
 
   app.use(errorHandler);
 

@@ -77,7 +77,7 @@ export function PublicImageModal({ image, onClose }: PublicImageModalProps) {
           <div className="flex items-start justify-between p-4 border-b border-base-content/8">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-semibold text-base-content">{image.address}</h2>
+                <h2 className="font-semibold text-base-content">{image.main_location}</h2>
                 <span className="font-mono text-sm text-primary bg-primary/10 px-2 py-0.5 rounded">
                   #{image.hash}
                 </span>
@@ -94,10 +94,10 @@ export function PublicImageModal({ image, onClose }: PublicImageModalProps) {
               {isLoading ? (
                 <span className="loading loading-spinner loading-lg text-primary" />
               ) : detail?.urls.large ? (
-                <img src={detail.urls.large} alt={detail.address}
+                <img src={detail.urls.large} alt={detail.main_location}
                   className="max-w-full max-h-full object-contain" style={{ maxHeight: '60vh' }} />
               ) : detail?.urls.thumb ? (
-                <img src={detail.urls.thumb} alt={detail.address}
+                <img src={detail.urls.thumb} alt={detail.main_location}
                   className="max-w-full max-h-full object-contain" style={{ maxHeight: '60vh' }} />
               ) : (
                 <div className="text-base-content/30 text-sm">Vorschau nicht verfügbar</div>

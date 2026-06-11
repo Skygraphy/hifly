@@ -8,6 +8,7 @@ import { PublicGalleryPage } from './pages/PublicGalleryPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminRegionsPage } from './pages/AdminRegionsPage';
 import { AdminSettingsPage } from './pages/AdminSettingsPage';
+import { AdminSyncPage } from './pages/AdminSyncPage';
 import { AccountPage } from './pages/AccountPage';
 
 export const router = createBrowserRouter([
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/admin/users', element: <AdminUsersPage /> },
       { path: '/admin/regions', element: <AdminRegionsPage /> },
+      { path: '/admin/sync', element: <AdminSyncPage /> },
     ],
   },
 
